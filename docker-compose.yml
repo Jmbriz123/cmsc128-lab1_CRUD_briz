@@ -8,6 +8,8 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      - ./backend/migrations:/app/migrations
     depends_on:
       postgres:
         condition: service_healthy
