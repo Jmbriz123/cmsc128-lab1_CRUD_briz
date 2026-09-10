@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -29,9 +31,21 @@ def create_todo(
     response_model=list[TodoResponse],
 )
 def get_todos(
+    sort_by: Literal["date_added", "due_date", "priority", "tag"] = Query(
+        default="date_added",
+    ),
+    sort_order: Literal["asc", "desc"] = Query(default="asc"),
+    tag: str | None = Query(default=None, min_length=1, max_length=100),
+    priority: Literal["low", "medium", "high"] | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    return todo_service.get_todos(db)
+    return todo_service.get_todos(
+        db,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        tag=tag,
+        priority=priority,
+    )
 
 
 @router.get(
