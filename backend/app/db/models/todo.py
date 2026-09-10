@@ -25,6 +25,25 @@ class Todo(Base):
         nullable=True,
     )
 
+    due_date: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+        index=True,
+    )
+
+    priority: Mapped[str] = mapped_column(
+        String(20),
+        default="medium",
+        nullable=False,
+        index=True,
+    )
+
+    tag: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        index=True,
+    )
+
     completed: Mapped[bool] = mapped_column(
         Boolean,
         default=False,
@@ -42,4 +61,10 @@ class Todo(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
         nullable=False,
+    )
+
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+        index=True,
     )
