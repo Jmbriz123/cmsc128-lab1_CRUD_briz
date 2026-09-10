@@ -14,6 +14,17 @@ services:
       postgres:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ./frontend
+    container_name: academic_task_manager_frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
+    depends_on:
+      - backend
+
   postgres:
     image: postgres:16-alpine
     container_name: academic_task_manager_db
