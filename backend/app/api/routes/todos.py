@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -83,6 +83,7 @@ def update_todo(
 )
 def delete_todo(
     todo_id: int,
+    response: Response,
     db: Session = Depends(get_db),
 ):
     todo = todo_service.get_todo(db, todo_id)
@@ -94,3 +95,23 @@ def delete_todo(
         )
 
     todo_service.delete_todo(db, todo)
+    response.headers["X-Undo-Window-Seconds"] = str(todo_service.UNDO_WINDOW_SECONDS)
+
+
+@router.post(
+    "/{todo_id}/restore",
+    response_model=TodoResponse,
+)
+def restore_todo(
+    todo_id: int,
+    db: Session = Depends(get_db),
+):
+    todo = todo_service.restore_todo(db, todo_id)
+
+    if todo is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Todo cannot be restored",
+        )
+
+    return todo

@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from app.services import todo_service
+
 
 def create_todo(client, **overrides):
     payload = {"title": "Study FastAPI", "description": "Review CRUD patterns"}
@@ -80,6 +82,47 @@ def test_delete_todo_returns_204_and_removes_todo(client):
 
     assert delete_response.status_code == 204
     assert delete_response.content == b""
+    assert delete_response.headers["x-undo-window-seconds"] == "10"
+    assert client.get(f"/todos/{todo['id']}").status_code == 404
+
+
+def test_deleted_todo_can_be_restored_during_undo_window(client):
+    todo = create_todo(client)
+
+    delete_response = client.delete(f"/todos/{todo['id']}")
+    restore_response = client.post(f"/todos/{todo['id']}/restore")
+
+    assert delete_response.status_code == 204
+    assert restore_response.status_code == 200
+    assert restore_response.json()["title"] == todo["title"]
+    assert client.get(f"/todos/{todo['id']}").status_code == 200
+
+
+def test_deleted_todo_is_hidden_from_list_until_restored(client):
+    todo = create_todo(client)
+
+    client.delete(f"/todos/{todo['id']}")
+
+    assert client.get("/todos").json() == []
+
+
+def test_active_todo_cannot_be_restored(client):
+    todo = create_todo(client)
+
+    response = client.post(f"/todos/{todo['id']}/restore")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Todo cannot be restored"}
+
+
+def test_expired_deleted_todo_cannot_be_restored(client, monkeypatch):
+    todo = create_todo(client)
+    client.delete(f"/todos/{todo['id']}")
+    monkeypatch.setattr(todo_service, "UNDO_WINDOW_SECONDS", 0)
+
+    response = client.post(f"/todos/{todo['id']}/restore")
+
+    assert response.status_code == 404
     assert client.get(f"/todos/{todo['id']}").status_code == 404
 
 
