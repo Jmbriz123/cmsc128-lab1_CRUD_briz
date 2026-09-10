@@ -43,3 +43,9 @@ class Todo(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
+
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+        index=True,
+    )
