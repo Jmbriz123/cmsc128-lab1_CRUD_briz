@@ -69,11 +69,12 @@ Run it in the backend container:
 docker compose exec backend pytest tests -q
 ```
 
-Run the frontend production build locally:
+The backend tests use SQLite and do not require PostgreSQL or Redis. Run the frontend workflow tests and production build locally:
 
 ```bash
 cd frontend
-npm install
+npm ci
+npm test
 npm run build
 ```
 
