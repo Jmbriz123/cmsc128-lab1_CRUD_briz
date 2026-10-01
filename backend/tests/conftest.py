@@ -33,7 +33,7 @@ def db_session(test_engine):
 
 
 @pytest.fixture()
-def client(test_engine):
+def anonymous_client(test_engine):
     TestingSessionLocal = sessionmaker(
         bind=test_engine,
         autoflush=False,
@@ -53,3 +53,15 @@ def client(test_engine):
             yield test_client
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def client(anonymous_client):
+    return anonymous_client
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    from app.core.rate_limit import limiter
+    with limiter.lock:
+        limiter.attempts.clear()
