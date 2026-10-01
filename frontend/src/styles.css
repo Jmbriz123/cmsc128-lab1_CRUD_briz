@@ -152,3 +152,32 @@ input.invalid { border-color: var(--coral); }
   .toast-region { right: 14px; bottom: 14px; left: 14px; }
   .toast { justify-content: space-between; }
 }
+
+
+/* Account screens share the task workspace's red theme. */
+.account-workspace { width: min(980px, calc(100% - 40px)); margin: 0 auto; padding: 48px 0 80px; }
+.account-panel { max-width: 470px; margin: 0 auto; padding: 30px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+.account-panel h1, .account-intro h1 { font-size: clamp(28px, 4vw, 42px); line-height: 1.15; }
+.account-panel h2 { margin-bottom: 18px; }
+.account-panel p { line-height: 1.5; }
+.account-panel a, .account-intro a, .nav a { color: var(--accent-dark); }
+.account-field { margin-top: 16px; }
+.account-field .field-error { margin-bottom: 0; }
+.account-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.account-grid .account-panel { width: 100%; }
+.account-form > .button { margin-top: 16px; }
+.password-toggle { background: transparent; border: 0; color: var(--accent-dark); font-size: 12px; padding: 7px 0 0; }
+.form-result { margin: 14px 0 0; color: var(--accent-dark); }
+.form-result.error, .account-message.error { color: var(--coral); }
+.account-message { padding: 12px 16px; margin-bottom: 20px; border-radius: 8px; background: var(--paper-deep); }
+.account-message:empty { display: none; }
+.signed-in { margin-left: auto; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.shared-notice { padding: 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; }
+input[aria-invalid="true"] { border-color: var(--coral); }
+@media (max-width: 700px) {
+  .account-grid { grid-template-columns: 1fr; }
+  .account-panel { padding: 22px; }
+  .topbar { height: auto; min-height: 76px; flex-wrap: wrap; gap: 12px; padding-top: 12px; padding-bottom: 12px; }
+  .nav { flex-wrap: wrap; gap: 12px; }
+  .signed-in { display: none; }
+}

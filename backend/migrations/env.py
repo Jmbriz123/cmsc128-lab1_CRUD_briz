@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
 from app.db.database import Base
-from app.db.models import Todo  # noqa: F401
+from app.db.models import AuthSession, PasswordResetToken, Todo, User  # noqa: F401
 
 
 config = context.config
