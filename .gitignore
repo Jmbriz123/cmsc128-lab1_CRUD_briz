@@ -24,3 +24,6 @@ out/
 
 #docs, not ready to be public
 docs/PROJECT_PLAN.md 
+
+#frontend
+frontend/dist
