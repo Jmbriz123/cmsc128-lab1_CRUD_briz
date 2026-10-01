@@ -19,6 +19,7 @@ beforeEach(() => {
   history.replaceState(null, "", "#/login");
   auth.currentUser.mockRejectedValue(Object.assign(new Error("Unauthorized"), { status: 401 }));
   vi.spyOn(window, "confirm").mockReturnValue(true);
+  vi.spyOn(window, "scrollTo").mockImplementation(() => {});
 });
 afterEach(() => { app?.stop(); vi.restoreAllMocks(); });
 
@@ -34,6 +35,7 @@ it("restores the session before showing the profile greeting", async () => {
   await start("profile", true);
   expect(screen.getByRole("heading", { name: "Hello, Student" })).toBeTruthy();
   expect(auth.currentUser).toHaveBeenCalledOnce();
+  expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
 });
 
 it("redirects unauthenticated task navigation to login", async () => {
