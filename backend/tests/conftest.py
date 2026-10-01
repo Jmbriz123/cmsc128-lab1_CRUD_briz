@@ -33,7 +33,7 @@ def db_session(test_engine):
 
 
 @pytest.fixture()
-def client(test_engine):
+def anonymous_client(test_engine):
     TestingSessionLocal = sessionmaker(
         bind=test_engine,
         autoflush=False,
@@ -49,7 +49,28 @@ def client(test_engine):
 
     app.dependency_overrides[get_db] = override_get_db
     try:
-        with TestClient(app) as test_client:
+        with TestClient(app, headers={"X-Requested-With": "Daymark", "Origin": "http://localhost:5173"}) as test_client:
             yield test_client
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def client(anonymous_client, db_session):
+    # Existing CRUD tests exercise real cookie authentication, not a bypass.
+    from app.db.models import User
+    from app.services.session_service import create_session
+    from app.core.config import settings
+    user = User(email="crud@example.com", display_name="CRUD Tester", password_hash="unused-fixture-hash")
+    db_session.add(user)
+    db_session.commit()
+    token = create_session(db_session, user.id)
+    anonymous_client.cookies.set(settings.session_cookie_name, token)
+    return anonymous_client
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    from app.core.rate_limit import limiter
+    with limiter.lock:
+        limiter.attempts.clear()

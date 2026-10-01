@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, act2-accounts]
   pull_request:
-    branches: [main]
+    branches: [main, act2-accounts]
 
 permissions:
   contents: read
@@ -13,6 +13,20 @@ jobs:
   backend:
     name: Backend tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-test-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -31,6 +45,7 @@ jobs:
         run: pytest -q
         env:
           DATABASE_URL: sqlite://
+          POSTGRES_TEST_URL: postgresql+psycopg://postgres:ci-test-only@localhost:5432/postgres
 
   frontend:
     name: Frontend tests and build

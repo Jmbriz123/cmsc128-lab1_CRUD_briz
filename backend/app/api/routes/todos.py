@@ -3,6 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_current_user
 from app.db.database import get_db
 from app.schemas.todo import TodoCreate, TodoResponse, TodoUpdate
 from app.services import todo_service
@@ -11,6 +12,7 @@ from app.services import todo_service
 router = APIRouter(
     prefix="/todos",
     tags=["todos"],
+    dependencies=[Depends(get_current_user)],
 )
 
 

@@ -13,18 +13,23 @@ import { toInputDate } from "../utils/task.js";
 const UNDO_FALLBACK_SECONDS = 10;
 
 export function bindTaskHandlers(elements) {
+  let active = true;
   async function loadTodos() {
+    if (!active) return;
     renderLoading(elements.taskList);
     try {
-      state.todos = await listTodos({
+      const todos = await listTodos({
         sortBy: elements.sortBy.value,
         sortOrder: elements.sortOrder.value,
         tag: elements.tagFilter.value.trim(),
         priority: elements.priorityFilter.value,
       });
+      if (!active) return;
+      state.todos = todos;
       renderTodos(state.todos, elements);
     } catch (error) {
-      renderLoadError(elements, error);
+      if (!active) return;
+      if (active) renderLoadError(elements, error);
     }
   }
 
@@ -85,14 +90,17 @@ export function bindTaskHandlers(elements) {
     try {
       if (state.editingId) {
         await updateTodo(state.editingId, formPayload());
+        if (!active) return;
         showFeedback(elements, "Task updated.");
       } else {
         await createTodo(formPayload());
+        if (!active) return;
         showFeedback(elements, "Task added to your workspace.");
       }
       resetForm();
       await loadTodos();
     } catch (error) {
+      if (!active) return;
       showFeedback(elements, error.message, "error");
     } finally {
       elements.saveButton.disabled = false;
@@ -102,9 +110,11 @@ export function bindTaskHandlers(elements) {
   async function toggleTask(todo) {
     try {
       await updateTodo(todo.id, { completed: !todo.completed });
+        if (!active) return;
       showFeedback(elements, todo.completed ? "Task reopened." : "Task marked complete.");
       await loadTodos();
     } catch (error) {
+      if (!active) return;
       showFeedback(elements, error.message, "error");
     }
   }
@@ -112,6 +122,7 @@ export function bindTaskHandlers(elements) {
   function openDeleteDialog(todo) {
     state.pendingDelete = todo;
     elements.deleteDialogCopy.textContent = `“${todo.title}” will leave your list. You will have a few seconds to undo it.`;
+    elements.confirmDelete.disabled = false;
     elements.deleteDialog.showModal();
   }
 
@@ -121,23 +132,28 @@ export function bindTaskHandlers(elements) {
     elements.confirmDelete.disabled = true;
     try {
       const { response } = await deleteTodo(todo.id);
+        if (!active) return;
       const undoSeconds = Number(response.headers.get("X-Undo-Window-Seconds")) || UNDO_FALLBACK_SECONDS;
       elements.deleteDialog.close();
       state.pendingDelete = null;
       await loadTodos();
+      if (!active) return;
       showUndoToast(elements, todo, undoSeconds, async (closeToast, deletedTodo) => {
         try {
           await restoreTodo(deletedTodo.id);
+        if (!active) return;
           closeToast();
           showFeedback(elements, "Task restored.");
           await loadTodos();
         } catch (error) {
+      if (!active) return;
           closeToast();
           showFeedback(elements, error.message, "error");
           await loadTodos();
         }
       });
     } catch (error) {
+      if (!active) return;
       elements.confirmDelete.disabled = false;
       showFeedback(elements, error.message, "error");
     }
@@ -195,4 +211,5 @@ export function bindTaskHandlers(elements) {
   });
 
   loadTodos();
+  return () => { active = false; };
 }
