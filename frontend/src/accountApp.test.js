@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as auth from "./api/auth.js";
 import { createAccountApp } from "./accountApp.js";
 import state from "./state.js";
+import { listTodos } from "./api/todos.js";
 
 vi.mock("./api/auth.js", () => ({
   currentUser: vi.fn(), register: vi.fn(), login: vi.fn(), logout: vi.fn(),
@@ -15,6 +16,7 @@ let app;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  listTodos.mockResolvedValue([]);
   document.body.innerHTML = '<div id="app"></div>';
   history.replaceState(null, "", "#/login");
   auth.currentUser.mockRejectedValue(Object.assign(new Error("Unauthorized"), { status: 401 }));
@@ -142,4 +144,41 @@ it("prevents duplicate pending submissions and displays rate-limit guidance", as
   expect(within(form).getByRole("button", { name: "Log in" }).disabled).toBe(true);
   reject(Object.assign(new Error("Too many attempts."), { status: 429, retryAfter: "30" }));
   await waitFor(() => expect(screen.getByText(/Retry in 30 seconds/)).toBeTruthy());
+});
+
+
+it("does not resurrect a session when an earlier session check finishes after logout", async () => {
+  let resolveCheck;
+  auth.currentUser.mockReturnValue(new Promise((resolve) => { resolveCheck = resolve; }));
+  app = createAccountApp();
+  const starting = app.start();
+  window.dispatchEvent(new Event("auth:expired"));
+  resolveCheck(user);
+  await starting;
+  expect(screen.getByRole("heading", { name: "Log in to Daymark" })).toBeTruthy();
+  expect(screen.queryByText("Hello, Student")).toBeNull();
+});
+
+it("ignores task responses that arrive after leaving the protected workspace", async () => {
+  let resolveTasks;
+  listTodos.mockReturnValue(new Promise((resolve) => { resolveTasks = resolve; }));
+  await start("tasks", true);
+  fireEvent.click(screen.getByRole("link", { name: "Profile", exact: true }));
+  await screen.findByRole("heading", { name: "Hello, Student" });
+  resolveTasks([{ id: 1, title: "Late task response" }]);
+  await Promise.resolve();
+  expect(state.todos).toEqual([]);
+});
+
+it("handles a profile update failure without discarding the edited values", async () => {
+  auth.updateProfile.mockRejectedValue(Object.assign(new Error("Email already exists"), { status: 409 }));
+  await start("profile", true);
+  input("Email address", "taken@example.com");
+  input("Current password", password);
+  fireEvent.submit(document.querySelector("#profile-form"));
+  await screen.findByText("Email already exists");
+  expect(screen.getByLabelText("Email address").value).toBe("taken@example.com");
+  window.confirm.mockReturnValue(false);
+  fireEvent.click(screen.getByRole("button", { name: "Log Out" }));
+  expect(auth.logout).not.toHaveBeenCalled();
 });
