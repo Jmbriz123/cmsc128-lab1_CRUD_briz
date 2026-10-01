@@ -49,7 +49,7 @@ def client(test_engine):
 
     app.dependency_overrides[get_db] = override_get_db
     try:
-        with TestClient(app) as test_client:
+        with TestClient(app, headers={"X-Requested-With": "Daymark", "Origin": "http://localhost:5173"}) as test_client:
             yield test_client
     finally:
         app.dependency_overrides.clear()

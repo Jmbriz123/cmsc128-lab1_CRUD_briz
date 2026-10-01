@@ -76,6 +76,26 @@ Subsequent source edits need no rebuild. Dependency and configuration changes ma
 - After adding database migrations: `docker compose exec backend alembic upgrade head`.
 - After changing Compose settings: `docker compose up -d`.
 
+## Authentication Security Foundation (Activity 2, Step 2)
+
+The account database and security helpers are implemented. Registration/login/profile/recovery endpoints and screens are the next step; task endpoints are not yet login-gated.
+
+- Password helpers use Argon2id through `pwdlib`. Registration validation accepts 15–128 characters, including spaces and Unicode, without trimming passwords. Emails are normalized and validated; display names are trimmed and limited to 100 characters. Public user responses expose only ID, email, and display name.
+- Sessions use random 256-bit tokens, storing only SHA-256 token hashes in PostgreSQL. Helpers create, resolve, and revoke sessions; `get_current_user` rejects missing, expired, and revoked sessions. Sessions default to 30 days and survive process restarts because authentication state is stored in the database. The browser cookie is HttpOnly, SameSite=Lax, host-only, and scoped to `/`.
+- `SESSION_COOKIE_SECURE=false` permits only localhost/loopback origins for development. For HTTPS deployment set it to `true` and set `ALLOWED_ORIGINS` to exact HTTPS origins (comma-separated, no paths or wildcards). Cookie security and allowed origins are validated together at startup.
+- Every POST/PATCH/PUT/DELETE request must include `X-Requested-With: Daymark`. If an Origin header is present, it must match `ALLOWED_ORIGINS`. Nonempty request bodies must use `Content-Type: application/json`. The frontend sends the custom header automatically. No permissive credentialed CORS is enabled. Validation responses omit submitted input and account responses use `Cache-Control: no-store`.
+- Login/recovery rate-limit dependencies are ready for the next step's endpoints: defaults are 10 login attempts and 3 recovery attempts per 60 seconds per peer IP. They return HTTP 429 with Retry-After. They do not yet apply to any route. Counters are bounded, in-memory, and reset on restart; multiple workers need shared storage. Requests through the Vite proxy share the proxy's peer IP; untrusted X-Forwarded-For headers are not used to identify clients.
+
+Rebuild the backend after installing these dependencies:
+
+```bash
+docker compose up -d --build --no-deps backend
+```
+
+If the installed Compose version crashes in its Bake integration, use `COMPOSE_BAKE=false docker compose up -d --build --no-deps backend`.
+
+Design references: [pwdlib](https://frankie567.github.io/pwdlib/reference/pwdlib/), [OWASP CSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).
+
 ## Run Tests
 
 The backend test suite uses an isolated in-memory SQLite database and covers CRUD behavior, validation, filtering, sorting, and undo deletion.
@@ -102,7 +122,7 @@ The API is REST-based and uses JSON request and response bodies. The examples be
 ### Create a task
 
 ```bash
-curl -X POST http://localhost:8000/todos \
+curl -H "X-Requested-With: Daymark" -X POST http://localhost:8000/todos \
 	-H 'Content-Type: application/json' \
 	-d '{
 		"title": "Finish literature review",
@@ -141,7 +161,7 @@ curl http://localhost:8000/todos/1
 ### Update a task
 
 ```bash
-curl -X PATCH http://localhost:8000/todos/1 \
+curl -H "X-Requested-With: Daymark" -X PATCH http://localhost:8000/todos/1 \
 	-H 'Content-Type: application/json' \
 	-d '{
 		"completed": true,
@@ -155,10 +175,10 @@ PATCH updates only the supplied fields. The title cannot be blank, and an empty 
 
 ```bash
 # Soft-delete a task. The response is 204 and includes the undo duration header.
-curl -i -X DELETE http://localhost:8000/todos/1
+curl -i -H "X-Requested-With: Daymark" -X DELETE http://localhost:8000/todos/1
 
 # Restore it during the undo window, currently 10 seconds.
-curl -X POST http://localhost:8000/todos/1/restore
+curl -H "X-Requested-With: Daymark" -X POST http://localhost:8000/todos/1/restore
 ```
 
 Deleted tasks are hidden from normal list and detail requests. After the undo window expires, the backend permanently purges them during normal todo access.
