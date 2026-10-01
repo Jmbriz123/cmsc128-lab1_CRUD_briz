@@ -65,6 +65,7 @@ export function createAccountApp() {
       }
     }
     if (notice) message(notice);
+    window.scrollTo(0, 0);
     document.querySelector("h1")?.setAttribute("tabindex", "-1");
     document.querySelector("h1")?.focus({ preventScroll: true });
   }
