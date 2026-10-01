@@ -1,31 +1,4 @@
-const API_BASE = "/api";
-
-async function apiRequest(path, options = {}) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Requested-With": "Daymark",
-      ...(options.headers || {}),
-    },
-  });
-
-  if (!response.ok) {
-    let message = `Request failed (${response.status})`;
-    try {
-      const payload = await response.json();
-      message = Array.isArray(payload.detail)
-        ? payload.detail.map((error) => error.msg).join(" ")
-        : payload.detail || message;
-    } catch {
-      // Keep the HTTP fallback when the server has no JSON error body.
-    }
-    throw new Error(message);
-  }
-
-  if (response.status === 204) return { data: null, response };
-  return { data: await response.json(), response };
-}
+import { apiRequest } from "./client.js";
 
 export async function listTodos(filters) {
   const params = new URLSearchParams({
