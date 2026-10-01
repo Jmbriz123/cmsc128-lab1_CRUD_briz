@@ -14,6 +14,10 @@ class DuplicateEmail(Exception):
     pass
 
 
+class PasswordUnchanged(Exception):
+    pass
+
+
 class InvalidCredentials(Exception):
     pass
 
@@ -76,6 +80,9 @@ def change_password(db: Session, user_id: int, data: PasswordChange) -> None:
     if user is None or not verify_password(data.current_password.get_secret_value(), user.password_hash):
         db.rollback()
         raise InvalidCredentials
+    if verify_password(data.new_password.get_secret_value(), user.password_hash):
+        db.rollback()
+        raise PasswordUnchanged
     user.password_hash = hash_password(data.new_password.get_secret_value())
     revoke_all_sessions(db, user_id)
     db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user_id))

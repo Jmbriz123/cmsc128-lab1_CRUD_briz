@@ -51,4 +51,6 @@ def change_password(payload: PasswordChange, response: Response,
         account_service.change_password(db, user.id, payload)
     except account_service.InvalidCredentials:
         raise HTTPException(400, "Current password is incorrect") from None
+    except account_service.PasswordUnchanged:
+        raise HTTPException(400, "Choose a password different from your current password") from None
     session_service.clear_session_cookie(response)

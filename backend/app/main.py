@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from app.core.request_security import protect_requests, safe_validation_error
+from app.api.routes.recovery import router as recovery_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.users import router as users_router
 from app.api.routes.todos import router as todos_router
@@ -15,6 +16,7 @@ app.middleware("http")(protect_requests)
 app.add_exception_handler(RequestValidationError, safe_validation_error)
 
 app.include_router(auth_router)
+app.include_router(recovery_router)
 app.include_router(users_router)
 app.include_router(todos_router)
 

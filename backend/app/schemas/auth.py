@@ -43,3 +43,12 @@ class PasswordChange(BaseModel):
 
 class Message(BaseModel):
     detail: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: Email
+
+
+class ResetPasswordRequest(BaseModel):
+    token: SecretStr = Field(min_length=43, max_length=43)
+    new_password: Password
