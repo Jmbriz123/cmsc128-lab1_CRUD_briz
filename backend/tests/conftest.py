@@ -56,7 +56,16 @@ def anonymous_client(test_engine):
 
 
 @pytest.fixture()
-def client(anonymous_client):
+def client(anonymous_client, db_session):
+    # Existing CRUD tests exercise real cookie authentication, not a bypass.
+    from app.db.models import User
+    from app.services.session_service import create_session
+    from app.core.config import settings
+    user = User(email="crud@example.com", display_name="CRUD Tester", password_hash="unused-fixture-hash")
+    db_session.add(user)
+    db_session.commit()
+    token = create_session(db_session, user.id)
+    anonymous_client.cookies.set(settings.session_cookie_name, token)
     return anonymous_client
 
 
