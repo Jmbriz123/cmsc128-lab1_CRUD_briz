@@ -1,7 +1,6 @@
 import "./styles.css";
+import { createAccountApp } from "./accountApp.js";
 
-import { mountApp } from "./components/appShell.js";
-import { bindTaskHandlers } from "./handlers/taskHandlers.js";
-
-const elements = mountApp();
-bindTaskHandlers(elements);
+const app = createAccountApp();
+app.start();
+if (import.meta.hot) import.meta.hot.dispose(() => app.stop());
