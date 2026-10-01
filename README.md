@@ -59,6 +59,23 @@ Node.js 22 and npm are only needed when developing the frontend outside Docker. 
 
 To remove the PostgreSQL volume and all stored development data, use `docker compose down -v`.
 
+## Live Development in Docker
+
+Both source directories are bind-mounted into their running containers. Saving frontend JavaScript, HTML, or CSS triggers Vite's browser updates; saving backend Python application files restarts Uvicorn automatically. Polling enables reliable file detection across Docker/WSL file systems. Frontend dependencies live in a separate Docker volume so host `node_modules` does not overwrite container dependencies.
+
+To apply this configuration to existing containers once:
+
+```bash
+docker compose up -d --no-deps backend frontend
+```
+
+Subsequent source edits need no rebuild. Dependency and configuration changes may need an extra step:
+
+- After changing backend requirements or its Dockerfile: `docker compose up -d --build --no-deps backend`.
+- After changing frontend dependencies: `docker compose exec frontend npm ci`, then `docker compose restart frontend`.
+- After adding database migrations: `docker compose exec backend alembic upgrade head`.
+- After changing Compose settings: `docker compose up -d`.
+
 ## Run Tests
 
 The backend test suite uses an isolated in-memory SQLite database and covers CRUD behavior, validation, filtering, sorting, and undo deletion.
