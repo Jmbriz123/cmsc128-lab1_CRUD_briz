@@ -4,18 +4,22 @@ export function mountApp() {
   app.innerHTML = `
     <div class="shell">
       <header class="topbar">
-        <a class="brand" href="#tasks" aria-label="Daymark home">
+        <a class="brand" href="#/tasks" aria-label="Daymark home">
           <span class="brand-mark">D</span>
           <span>Daymark</span>
         </a>
         <nav class="nav" aria-label="Primary navigation">
-          <a class="nav-link active" href="#tasks">All tasks</a>
+          <a class="nav-link active" href="#/tasks">All tasks</a>
           <span class="task-count" id="task-count">0 tasks</span>
+          <a href="#/profile">Profile</a>
+          <button class="button button-quiet" type="button" data-logout>Log Out</button>
         </nav>
         <div class="status-dot"><span></span>Workspace online</div>
       </header>
 
       <main id="tasks" class="workspace">
+        <div id="account-feedback" role="status" aria-live="polite"></div>
+        <p class="shared-notice">Shared workspace: all signed-in users can access these tasks. Personal task ownership comes in the next activity.</p>
         <section class="intro">
           <div>
             <p class="eyebrow">Academic task manager</p>

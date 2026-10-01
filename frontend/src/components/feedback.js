@@ -1,10 +1,17 @@
 let undoTimer = null;
+let feedbackTimer = null;
+
+export function clearFeedbackTimers() {
+  window.clearInterval(undoTimer);
+  window.clearTimeout(feedbackTimer);
+}
 
 export function showFeedback(elements, message, type = "success") {
+  window.clearTimeout(feedbackTimer);
   elements.feedback.textContent = message;
   elements.feedback.className = `feedback ${type}`;
   if (type === "success") {
-    window.setTimeout(() => {
+    feedbackTimer = window.setTimeout(() => {
       elements.feedback.textContent = "";
       elements.feedback.className = "feedback";
     }, 4200);
