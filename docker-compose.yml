@@ -8,6 +8,12 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: ${DATABASE_URL}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-30}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000}
+      AUTH_RATE_WINDOW_SECONDS: ${AUTH_RATE_WINDOW_SECONDS:-60}
+      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-10}
+      RECOVERY_RATE_LIMIT: ${RECOVERY_RATE_LIMIT:-3}
       WATCHFILES_FORCE_POLLING: "true"
     volumes:
       - ./backend:/app
