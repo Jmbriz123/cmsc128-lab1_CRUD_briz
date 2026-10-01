@@ -5,6 +5,7 @@ async function apiRequest(path, options = {}) {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      "X-Requested-With": "Daymark",
       ...(options.headers || {}),
     },
   });
