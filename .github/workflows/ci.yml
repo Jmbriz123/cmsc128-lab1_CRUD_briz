@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, act2-accounts]
+    branches: [main, act2-accounts, act3-ubac]
   pull_request:
-    branches: [main, act2-accounts]
+    branches: [main, act2-accounts, act3-ubac]
 
 permissions:
   contents: read
