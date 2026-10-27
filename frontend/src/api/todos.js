@@ -7,6 +7,7 @@ export async function listTodos(filters) {
   });
   if (filters.tag) params.set("tag", filters.tag);
   if (filters.priority) params.set("priority", filters.priority);
+  if (filters.listId) params.set("list_id", filters.listId);
 
   const { data } = await apiRequest(`/todos?${params.toString()}`);
   return data;

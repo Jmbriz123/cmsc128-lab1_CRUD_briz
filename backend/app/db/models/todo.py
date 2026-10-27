@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -12,6 +12,21 @@ class Todo(Base):
     id: Mapped[int] = mapped_column(
         Integer,
         primary_key=True,
+        index=True,
+    )
+
+    # The account that created the task; deleting the account deletes its tasks.
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # NULL keeps the task in its owner's personal list; otherwise the task
+    # belongs to a collaborative list and is shared with that list's members.
+    list_id: Mapped[int | None] = mapped_column(
+        ForeignKey("task_lists.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
 

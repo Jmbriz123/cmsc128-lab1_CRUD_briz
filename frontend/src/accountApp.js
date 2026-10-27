@@ -1,6 +1,7 @@
 import * as auth from "./api/auth.js";
 import { accountShell, renderAccountPage } from "./components/accountViews.js";
 import { mountApp } from "./components/appShell.js";
+import { bindListHandlers } from "./handlers/listHandlers.js";
 import { bindTaskHandlers } from "./handlers/taskHandlers.js";
 import { clearFeedbackTimers } from "./components/feedback.js";
 import state from "./state.js";
@@ -26,7 +27,7 @@ export function createAccountApp() {
       resetToken = token;
       history.replaceState(null, "", "#/reset-password");
     }
-    return routes.has(path) ? path : (user ? "profile" : "login");
+    return routes.has(path) ? path : (user ? "tasks" : "login");
   }
 
   function clearTasks() {
@@ -56,7 +57,9 @@ export function createAccountApp() {
     history.replaceState(null, "", `#/${route}`);
     if (route === "tasks") {
       const elements = mountApp();
-      stopTasks = bindTaskHandlers(elements);
+      const stopTaskHandlers = bindTaskHandlers(elements);
+      const stopListHandlers = bindListHandlers(elements, user);
+      stopTasks = () => { stopTaskHandlers(); stopListHandlers(); };
     } else {
       renderAccountPage(route, user);
       if (route === "reset-password" && !resetToken) {
@@ -100,7 +103,7 @@ export function createAccountApp() {
     if (operation !== version || stopped) return;
     if (preserve && route === currentRoute && user && user.id === previousUser?.id) return;
     const destination = !user && protectedRoutes.has(route) ? "login"
-      : user && ["login", "register"].includes(route) ? "profile" : route;
+      : user && ["login", "register"].includes(route) ? "tasks" : route;
     render(destination);
   }
 
@@ -169,7 +172,7 @@ export function createAccountApp() {
           const authenticated = await auth.login(payload);
           if (operation !== version) return;
           user = authenticated;
-          await navigate("profile", "", true);
+          await navigate("tasks", "", true);
           break;
         }
         case "profile-form": {

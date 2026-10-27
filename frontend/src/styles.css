@@ -154,6 +154,26 @@ input.invalid { border-color: var(--coral); }
 }
 
 
+/* Personal / collaborative list picker and member management. */
+.list-bar { display: grid; grid-template-columns: minmax(200px, 320px) minmax(0, 1fr); gap: 9px 24px; align-items: end; margin-bottom: 24px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 250, 250, .64); }
+.inline-controls { display: flex; gap: 9px; }
+.inline-controls input { min-width: 0; }
+.inline-controls .button { white-space: nowrap; }
+.list-message { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--accent-dark); }
+.list-message:empty { display: none; }
+.list-message.error { color: var(--coral); }
+.members-panel { display: grid; gap: 16px; margin-bottom: 36px; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); box-shadow: var(--shadow); }
+.member-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.member-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; overflow-wrap: anywhere; }
+.member-email { color: var(--muted); }
+.member-role { color: var(--accent); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
+.member-actions { display: flex; gap: 9px; }
+.member-actions:not(:has(.button:not(.hidden))) { display: none; }
+@media (max-width: 700px) {
+  .list-bar { grid-template-columns: 1fr; }
+  .inline-controls { flex-direction: column; }
+}
+
 /* Account screens share the task workspace's red theme. */
 .account-workspace { width: min(980px, calc(100% - 40px)); margin: 0 auto; padding: 48px 0 80px; }
 .account-panel { max-width: 470px; margin: 0 auto; padding: 30px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
@@ -172,7 +192,6 @@ input.invalid { border-color: var(--coral); }
 .account-message { padding: 12px 16px; margin-bottom: 20px; border-radius: 8px; background: var(--paper-deep); }
 .account-message:empty { display: none; }
 .signed-in { margin-left: auto; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
-.shared-notice { padding: 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; }
 input[aria-invalid="true"] { border-color: var(--coral); }
 @media (max-width: 700px) {
   .account-grid { grid-template-columns: 1fr; }

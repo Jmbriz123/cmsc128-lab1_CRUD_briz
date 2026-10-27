@@ -1,10 +1,61 @@
 # Daymark — Academic Task Manager
 
-Daymark extends the Activity 1 To-Do application with Activity 2 accounts: registration, login, persistent sessions, logout, profile editing, password changes, and password recovery through real SMTP email.
+Daymark merges the Activity 1 To-Do application with Activity 2 accounts (registration, login, persistent sessions, profile, password change and recovery) and adds Activity 3 **user-based access control (UBAC)**: every user creates, views, updates, and deletes only their own tasks, plus tasks in collaborative lists they own or were added to.
 
-The app uses **vanilla JavaScript and Vite**, **FastAPI**, **SQLAlchemy/Alembic**, and **PostgreSQL 16**. It retains task creation, editing, completion, filtering, sorting, deletion, and timed undo. All task operations require login. Tasks are currently **shared among signed-in users**; owner-based access control belongs to the next activity.
+The app uses **vanilla JavaScript and Vite**, **FastAPI**, **SQLAlchemy/Alembic**, and **PostgreSQL 16**. It retains task creation, editing, completion, filtering, sorting, deletion, and timed undo. After login the user lands directly on their personal To-Do list and can switch to collaborative lists.
 
-Activity 2 work is on **`act2-accounts`** in the same public Activity 1 repository. This is an individual submission.
+Activity 3 work is on **`act3-ubac`** in the same public repository (Activity 2: `act2-accounts`). This is an individual submission.
+
+## Activity 3: how Activities 1 and 2 were merged
+
+- Activity 1 (CRUD) lives on `main`. Activity 2 was developed on `act2-accounts`, branched from that CRUD code, and merged back into `main` through pull request #10. That merge applied cleanly: Activity 2 changed the task code only to require a signed-in session (`dependencies=[Depends(get_current_user)]` on the task router), so Git reported no conflicts.
+- `act3-ubac` was created from `act2-accounts` and `main` was merged into it with `git merge --no-ff main`, recording an explicit merge commit as the integration point. There were again no textual conflicts.
+- The real integration work was **semantic**, not textual: the merged code authenticated users but did not know *who* owned a task. Activity 3 resolves that by adding `todos.user_id`, passing the signed-in user into every task route, and filtering every query by owner/membership. Each step is a separate commit on `act3-ubac`.
+
+## Schema
+
+```
+users ─┬─< auth_sessions            (user_id FK, CASCADE)        Activity 2
+       ├─< password_reset_tokens    (user_id FK, CASCADE)        Activity 2
+       ├─< todos.user_id            (owner/creator, NOT NULL)    Activity 3
+       ├─< task_lists.owner_id      (list owner, NOT NULL)       Activity 3
+       └─< list_members.user_id     (added members)              Activity 3
+
+task_lists ─┬─< list_members.list_id   PK (list_id, user_id)
+            └─< todos.list_id          NULL = owner's personal list
+```
+
+| Table | Purpose | Key constraints |
+|---|---|---|
+| `users` | Accounts (Argon2id `password_hash`, never plaintext) | unique `email` |
+| `todos` | Tasks | `user_id` → `users.id` NOT NULL; `list_id` → `task_lists.id` nullable; both `ON DELETE CASCADE`, indexed |
+| `task_lists` | Collaborative lists | `owner_id` → `users.id` NOT NULL |
+| `list_members` | Who was added to which list | composite primary key `(list_id, user_id)` prevents duplicates |
+
+The schema is normalized: tasks store only the owner's ID, never their name or email, and a list's owner is stored once in `task_lists.owner_id` rather than duplicated as a member row. Migration `b23c45d67e89` adds `todos.user_id`; tasks created before it were shared by everyone and cannot be attributed to an owner, so that migration removes them instead of handing them to an arbitrary account. Migration `c34d56e78f90` adds the list tables.
+
+## Access control (UBAC)
+
+Authorization is enforced only on the backend; hiding buttons in the UI is a convenience, not a control.
+
+1. `get_current_user` (`backend/app/api/dependencies.py`) turns the session cookie into a `User`, or answers 401.
+2. Every task route receives that `user` and passes `user_id=user.id` to the service layer. The task router also keeps a router-level authentication dependency, so a route that forgot to ask for the user would still reject anonymous requests.
+3. Every task query in `backend/app/services/todo_service.py` (list, detail, update, delete, restore) includes **one** filter, `_accessible_by(user_id)`:
+
+   ```python
+   or_(
+       and_(Todo.list_id.is_(None), Todo.user_id == user_id),   # my personal tasks
+       Todo.list_id.in_(accessible_list_ids(user_id)),          # lists I own or joined
+   )
+   ```
+
+   `accessible_list_ids` (`backend/app/services/list_service.py`) is the single membership rule shared by list and task endpoints.
+4. **IDOR prevention:** the ID in the URL is only ever looked up *together with* that filter. If account B requests account A's task `/todos/5`, the query matches no row and the route answers **404 "Todo not found"**, exactly as for a nonexistent ID, so B cannot even confirm the task exists. The same applies to `POST /todos/5/restore`.
+5. Lists use **404** for lists you cannot see and **403** when a member attempts an owner-only action (adding/removing others, deleting the list).
+6. A task's owner comes from the session, never from the request body. `list_id` can be set only at creation (after an access check) and cannot be changed by `PATCH`, so a task cannot be moved into someone else's list.
+7. Access to collaborative-list tasks follows **membership, not authorship**: a removed member immediately loses access, including to tasks they created there.
+
+`backend/tests/test_ubac.py` and `backend/tests/test_lists.py` sign in as two or three accounts and verify each rule above, including the Activity 3 "Nikko / Victor" scenario.
 
 ## Run with Docker
 
@@ -19,9 +70,17 @@ Requirements: Docker Engine and Docker Compose v2. For real recovery email, also
    ```
 
    If your installed Compose version crashes in its Bake integration, use `COMPOSE_BAKE=false docker compose up -d --build`.
-4. Open <http://localhost:5173>. Register an account, then log in. Successful login opens Profile with `Hello, <display name>`.
+   If host port 5433 is already used by another project, choose a free one for this run, e.g. `POSTGRES_PORT=5434 docker compose up -d`. Inside Docker the backend always reaches PostgreSQL on port 5432.
+4. Open <http://localhost:5173>. Register an account, then log in. Successful login opens that user's personal To-Do list.
+5. Optional demo data: after registering the two demo accounts **through the registration page**, add sample personal tasks to them:
 
-Other addresses: API documentation <http://localhost:8000/docs>, health check <http://localhost:8000/health>. The health check is public; account data and task routes enforce authentication on the server.
+   ```bash
+   docker compose exec backend python -m app.seed_tasks first@example.com second@example.com
+   ```
+
+   The seeder never creates accounts and skips tasks an account already has.
+
+Other addresses: API documentation <http://localhost:8000/docs>, health check <http://localhost:8000/health>. The health check is public; account, task, and list routes enforce authentication and ownership on the server.
 
 The backend applies Alembic migrations automatically before starting. PostgreSQL stores its data in the `postgres_data` Docker volume, which survives backend restarts and `docker compose down`. No account seeding is necessary; register through the UI. Do not remove that volume if you want to retain data.
 
@@ -93,12 +152,18 @@ The browser calls these paths with an `/api` prefix through Vite. Direct backend
 | `POST /auth/change-password` | `current_password`, `new_password`; revokes all sessions; 204 |
 | `POST /auth/forgot-password` | `email`; generic acknowledgment, 202 |
 | `POST /auth/reset-password` | `token`, `new_password`; consumes link and revokes sessions; 204 |
-| `GET /todos` | Authenticated shared tasks; optional `tag`, `priority`, `sort_by`, `sort_order` |
-| `GET /todos/{id}` | Authenticated task detail |
-| `POST /todos` | `title`, optional `description`, `due_date`, `priority`, `tag` |
-| `PATCH /todos/{id}` | Any supported task fields, including `completed` |
-| `DELETE /todos/{id}` | Soft-delete, 204; `X-Undo-Window-Seconds` reports the undo window |
-| `POST /todos/{id}/restore` | Restore within the undo window |
+| `GET /todos` | Caller's personal tasks; `list_id` selects a collaborative list (404 unless owner/member); optional `tag`, `priority`, `sort_by`, `sort_order` |
+| `GET /todos/{id}` | Task detail; 404 unless the task is accessible to the caller |
+| `POST /todos` | `title`, optional `description`, `due_date`, `priority`, `tag`, `list_id`; owner is always the caller |
+| `PATCH /todos/{id}` | Supported task fields, including `completed`; 404 unless accessible; `list_id` cannot be changed |
+| `DELETE /todos/{id}` | Soft-delete, 204; 404 unless accessible; `X-Undo-Window-Seconds` reports the undo window |
+| `POST /todos/{id}/restore` | Restore within the undo window; 404 unless accessible |
+| `GET /lists` | Lists the caller owns or was added to, with `owner_name` and `is_owner` |
+| `POST /lists` | `name` (1–100 characters); caller becomes owner |
+| `DELETE /lists/{id}` | Owner only (403 for members, 404 for others); deletes its memberships and tasks |
+| `GET /lists/{id}/members` | Owner and members (404 for others) |
+| `POST /lists/{id}/members` | Owner only; `email` of a registered account; 404 unknown email, 409 already has access |
+| `DELETE /lists/{id}/members/{user_id}` | Owner removes anyone; a member may remove only themselves (leave) |
 
 Task priorities: `low`, `medium`, `high`. Sort fields: `date_added`, `due_date`, `priority`, `tag`; order: `asc` or `desc`. Expired soft-deleted tasks are purged during normal task access.
 
@@ -107,6 +172,8 @@ For example, after logging in with a CLI cookie jar:
 ```bash
 curl -b /tmp/daymark-cookies http://localhost:8000/auth/me
 curl -b /tmp/daymark-cookies 'http://localhost:8000/todos?sort_by=priority&sort_order=desc'
+# Another account's task ID behaves exactly like a missing one:
+curl -b /tmp/daymark-cookies -i http://localhost:8000/todos/999   # 404 {"detail":"Todo not found"}
 curl -b /tmp/daymark-cookies -X POST http://localhost:8000/auth/logout \
   -H 'X-Requested-With: Daymark'
 ```
@@ -124,13 +191,15 @@ docker compose exec frontend npm test
 docker compose exec frontend npm run build
 ```
 
-PostgreSQL integration tests additionally cover migration upgrade/downgrade, task preservation, constraints, fresh-process session persistence, and concurrent reset consumption. They create and remove uniquely named temporary databases. Enable them with a PostgreSQL role allowed to create databases:
+UBAC tests (`test_ubac.py`, `test_lists.py`, `test_list_models.py`) act as several signed-in accounts against the same database and check that every task and list operation stays within the caller's own data.
+
+PostgreSQL integration tests additionally cover migration upgrade/downgrade, removal of unattributable pre-ownership tasks, constraints, fresh-process session persistence, and concurrent reset consumption. They create and remove uniquely named temporary databases. Enable them with a PostgreSQL role allowed to create databases:
 
 ```bash
 docker compose exec backend sh -c 'POSTGRES_TEST_URL="$DATABASE_URL" pytest tests -q'
 ```
 
-Without `POSTGRES_TEST_URL`, those integration tests explicitly skip. Mock SMTP tests verify delivery boundaries without sending mail; a real-inbox test is still necessary before defense. GitHub Actions runs backend tests with PostgreSQL plus frontend tests/build for `main` and `act2-accounts`.
+Without `POSTGRES_TEST_URL`, those integration tests explicitly skip. Mock SMTP tests verify delivery boundaries without sending mail; a real-inbox test is still necessary before defense. GitHub Actions runs backend tests with PostgreSQL plus frontend tests/build for `main`, `act2-accounts`, and `act3-ubac`.
 
 ## Database inspection and defense
 
@@ -149,22 +218,35 @@ SELECT id, email, display_name, left(password_hash, 10) || '…' AS hash_prefix,
 FROM users ORDER BY id;
 SELECT user_id, created_at, expires_at FROM auth_sessions ORDER BY id;
 SELECT user_id, expires_at, consumed_at FROM password_reset_tokens ORDER BY id;
+
+-- Tasks with their owner (joined; no password data selected)
+SELECT t.id, t.title, t.completed, t.list_id, u.id AS owner_id, u.email AS owner
+FROM todos t JOIN users u ON u.id = t.user_id
+WHERE t.deleted_at IS NULL ORDER BY u.id, t.id;
+
+-- Collaborative lists, owners, and members
+SELECT l.id, l.name, o.email AS owner, m.email AS member
+FROM task_lists l JOIN users o ON o.id = l.owner_id
+LEFT JOIN list_members lm ON lm.list_id = l.id
+LEFT JOIN users m ON m.id = lm.user_id ORDER BY l.id;
 \q
 ```
 
 The password representation begins with an Argon2 identifier; it is not reversible plaintext. Do not display raw session/reset tokens during defense. Re-run the account query after a browser refresh and backend restart to demonstrate persistence.
 
-Use [the defense checklist](docs/DEFENSE_CHECKLIST.md) to rehearse the required live flows and source-code explanations. The final submission checkpoint must use the lab-prescribed commit message `cmsc128-Indiv-Act2`; normal development commits use Conventional Commits. Submit the public repository URL and the `act2-accounts` branch. The live defense and its deadline remain the student's responsibility.
+The final submission checkpoint uses the lab-prescribed commit message `cmsc128-Indiv-Act3-finalX`; normal development commits use Conventional Commits. Submit the public repository URL and the `act3-ubac` branch. The live defense and its deadline remain the student's responsibility.
 
 ## Project map
 
-- `backend/app/api/`: account/task routes and authenticated-user dependency.
-- `backend/app/services/`: account transactions, session lifecycle, SMTP delivery, reset consumption, task operations.
+- `backend/app/api/`: account, task, and list routes and the authenticated-user dependency.
+- `backend/app/services/`: account transactions, session lifecycle, SMTP delivery, reset consumption, owner-scoped task operations (`todo_service.py`), and list membership rules (`list_service.py`).
+- `backend/app/seed_tasks.py`: optional demo-task seeder for already-registered accounts.
 - `backend/app/core/`: settings, password/token helpers, request protection, throttling.
 - `backend/app/db/models/` and `backend/migrations/`: durable data model and schema history.
 - `frontend/src/accountApp.js`: navigation, account form orchestration, session restoration.
 - `frontend/src/components/`: account views and task presentation.
+- `frontend/src/handlers/`: task interactions (`taskHandlers.js`) and the list picker / member panel (`listHandlers.js`).
 - `frontend/src/api/`: shared HTTP client and endpoint wrappers.
 - `backend/tests/` and frontend `*.test.js`: behavior and regression coverage.
 
-Design references: [FastAPI password hashing](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/), [OWASP sessions](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html), [OWASP CSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html), [OWASP password recovery](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html).
+Design references: [OWASP Broken Access Control](https://owasp.org/Top10/A01_2021-Broken_Access_Control/), [OWASP IDOR prevention](https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html), [FastAPI password hashing](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/), [OWASP sessions](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html), [OWASP CSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html), [OWASP password recovery](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html).

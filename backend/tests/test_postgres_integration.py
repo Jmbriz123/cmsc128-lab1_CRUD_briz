@@ -53,15 +53,18 @@ def postgres():
 def test_migration_round_trip_and_constraints(postgres):
     engine, _, migrate = postgres
     with Session(engine) as db:
-        db.add(Todo(title="Preserve through account migration"))
         user = User(email="migration@example.com", display_name="Migration", password_hash="hash-placeholder")
         db.add(user)
         db.commit()
         user_id = user.id
         assert user.created_at.utcoffset() == timedelta(0)
+        db.add(Todo(title="Owned task", user_id=user_id))
         for model in (AuthSession, PasswordResetToken):
             db.add(model(user_id=user_id, token_hash="a" * 64,
                          expires_at=datetime.now(timezone.utc) + timedelta(hours=1)))
+        db.commit()
+    with Session(engine) as db, pytest.raises(IntegrityError):
+        db.add(Todo(title="Unknown owner", user_id=99999))
         db.commit()
     for model in (AuthSession, PasswordResetToken):
         with Session(engine) as db, pytest.raises(IntegrityError):
@@ -78,11 +81,16 @@ def test_migration_round_trip_and_constraints(postgres):
         db.commit()
         assert db.scalar(select(AuthSession)) is None
         assert db.scalar(select(PasswordResetToken)) is None
+        assert db.scalar(select(Todo)) is None
     migrate("downgrade", "9a2b3c4d5e6f")
     assert "users" not in inspect(engine).get_table_names()
-    with engine.connect() as conn:
-        assert conn.scalar(text("SELECT title FROM todos")) == "Preserve through account migration"
+    with engine.begin() as conn:
+        conn.execute(text("INSERT INTO todos (title, priority, completed, created_at, updated_at) "
+                          "VALUES ('Shared before ownership', 'medium', false, now(), now())"))
     migrate("upgrade", "head")
+    # Shared pre-ownership tasks cannot be attributed, so the migration drops them.
+    with engine.connect() as conn:
+        assert conn.scalar(text("SELECT count(*) FROM todos")) == 0
     migrate("check")
 
 

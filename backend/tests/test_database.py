@@ -7,8 +7,8 @@ from app.schemas.todo import TodoUpdate
 from app.services import todo_service
 
 
-def test_todo_creation_persists_database_defaults(db_session):
-    todo = Todo(title="Persist this task")
+def test_todo_creation_persists_database_defaults(db_session, make_user):
+    todo = Todo(title="Persist this task", user_id=make_user().id)
     db_session.add(todo)
     db_session.commit()
     todo_id = todo.id
@@ -25,8 +25,8 @@ def test_todo_creation_persists_database_defaults(db_session):
     assert persisted.deleted_at is None
 
 
-def test_todo_update_is_persisted(db_session):
-    todo = Todo(title="Original title")
+def test_todo_update_is_persisted(db_session, make_user):
+    todo = Todo(title="Original title", user_id=make_user().id)
     db_session.add(todo)
     db_session.commit()
     todo_id = todo.id
@@ -44,8 +44,9 @@ def test_todo_update_is_persisted(db_session):
     assert persisted.priority == "high"
 
 
-def test_soft_delete_and_restore_are_persisted(db_session):
-    todo = Todo(title="Restorable task")
+def test_soft_delete_and_restore_are_persisted(db_session, make_user):
+    owner = make_user()
+    todo = Todo(title="Restorable task", user_id=owner.id)
     db_session.add(todo)
     db_session.commit()
     todo_id = todo.id
@@ -55,15 +56,24 @@ def test_soft_delete_and_restore_are_persisted(db_session):
     deleted = db_session.get(Todo, todo_id)
     assert deleted.deleted_at is not None
 
-    restored = todo_service.restore_todo(db_session, todo_id)
+    restored = todo_service.restore_todo(db_session, todo_id, user_id=owner.id)
 
     assert restored is not None
     assert restored.deleted_at is None
     assert db_session.get(Todo, todo_id).deleted_at is None
 
 
-def test_database_rejects_a_missing_required_title(db_session):
-    db_session.add(Todo(title=None))
+def test_database_rejects_a_missing_required_title(db_session, make_user):
+    db_session.add(Todo(title=None, user_id=make_user().id))
+
+    with pytest.raises(IntegrityError):
+        db_session.flush()
+
+    db_session.rollback()
+
+
+def test_database_rejects_a_task_without_an_owner(db_session):
+    db_session.add(Todo(title="Ownerless task"))
 
     with pytest.raises(IntegrityError):
         db_session.flush()

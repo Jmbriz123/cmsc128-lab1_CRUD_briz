@@ -196,6 +196,7 @@ describe("Daymark task workflows", () => {
       due_date: new Date("2026-10-03T09:15").toISOString(),
       priority: "high",
       tag: "coursework",
+      list_id: null,
     });
     expect(screen.getByText("Draft the outline")).toBeTruthy();
     expect(within(elements.taskList).getByText("High")).toBeTruthy();

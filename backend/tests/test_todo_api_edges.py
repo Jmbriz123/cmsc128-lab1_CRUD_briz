@@ -5,6 +5,7 @@ import pytest
 
 RESPONSE_FIELDS = {
     "id",
+    "list_id",
     "title",
     "description",
     "due_date",

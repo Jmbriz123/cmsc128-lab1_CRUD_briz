@@ -13,6 +13,7 @@ class TodoCreate(BaseModel):
     due_date: datetime | None = None
     priority: Priority = "medium"
     tag: str | None = Field(default=None, min_length=1, max_length=100)
+    list_id: int | None = None
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -42,6 +43,7 @@ class TodoUpdate(BaseModel):
 
 class TodoResponse(BaseModel):
     id: int
+    list_id: int | None
     title: str
     description: str | None
     due_date: datetime | None

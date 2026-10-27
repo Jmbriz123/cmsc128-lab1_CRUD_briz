@@ -23,6 +23,7 @@ export function bindTaskHandlers(elements) {
         sortOrder: elements.sortOrder.value,
         tag: elements.tagFilter.value.trim(),
         priority: elements.priorityFilter.value,
+        listId: elements.listSelect.value,
       });
       if (!active) return;
       state.todos = todos;
@@ -93,7 +94,9 @@ export function bindTaskHandlers(elements) {
         if (!active) return;
         showFeedback(elements, "Task updated.");
       } else {
-        await createTodo(formPayload());
+        // The list picker decides where new tasks go; the server re-checks access.
+        const listId = elements.listSelect.value ? Number(elements.listSelect.value) : null;
+        await createTodo({ ...formPayload(), list_id: listId });
         if (!active) return;
         showFeedback(elements, "Task added to your workspace.");
       }
@@ -194,8 +197,10 @@ export function bindTaskHandlers(elements) {
     elements.deleteDialog.close();
   });
   elements.confirmDelete.addEventListener("click", confirmDelete);
-  [elements.tagFilter, elements.priorityFilter, elements.sortBy, elements.sortOrder]
+  [elements.tagFilter, elements.priorityFilter, elements.sortBy, elements.sortOrder, elements.listSelect]
     .forEach((element) => element.addEventListener("change", loadTodos));
+  // An edit started in one list must not carry over to another.
+  elements.listSelect.addEventListener("change", resetForm);
   elements.tagFilter.addEventListener("keydown", (event) => {
     if (event.key === "Enter") loadTodos();
   });
