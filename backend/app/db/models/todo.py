@@ -22,6 +22,14 @@ class Todo(Base):
         index=True,
     )
 
+    # NULL keeps the task in its owner's personal list; otherwise the task
+    # belongs to a collaborative list and is shared with that list's members.
+    list_id: Mapped[int | None] = mapped_column(
+        ForeignKey("task_lists.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
     title: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
