@@ -57,15 +57,14 @@ def test_migration_round_trip_and_constraints(postgres):
         db.add(user)
         db.commit()
         user_id = user.id
-        db.add(Todo(title="Owned task", user_id=user_id))
-        db.commit()
-    with Session(engine) as db, pytest.raises(IntegrityError):
-        db.add(Todo(title="Unknown owner", user_id=99999))
-        db.commit()
         assert user.created_at.utcoffset() == timedelta(0)
+        db.add(Todo(title="Owned task", user_id=user_id))
         for model in (AuthSession, PasswordResetToken):
             db.add(model(user_id=user_id, token_hash="a" * 64,
                          expires_at=datetime.now(timezone.utc) + timedelta(hours=1)))
+        db.commit()
+    with Session(engine) as db, pytest.raises(IntegrityError):
+        db.add(Todo(title="Unknown owner", user_id=99999))
         db.commit()
     for model in (AuthSession, PasswordResetToken):
         with Session(engine) as db, pytest.raises(IntegrityError):
