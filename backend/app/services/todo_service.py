@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy import case, delete, select
+from sqlalchemy import and_, case, delete, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models.todo import Todo
 from app.schemas.todo import TodoCreate, TodoUpdate
+from app.services.list_service import accessible_list_ids
 
 
 UNDO_WINDOW_SECONDS = 10
@@ -22,16 +23,21 @@ def _purge_expired_deleted_todos(db: Session) -> None:
 
 
 def _accessible_by(user_id: int):
-    # Single source of truth for which tasks a user may see or change. Every
-    # task query goes through this filter, so a guessed ID that belongs to
-    # another account matches nothing and the route answers 404.
-    return Todo.user_id == user_id
+    # Single source of truth for which tasks a user may see or change: their
+    # own personal tasks, plus every task in a collaborative list they own or
+    # were added to. Every task query goes through this filter, so a guessed
+    # ID outside that set matches nothing and the route answers 404.
+    return or_(
+        and_(Todo.list_id.is_(None), Todo.user_id == user_id),
+        Todo.list_id.in_(accessible_list_ids(user_id)),
+    )
 
 
 def create_todo(db: Session, todo_data: TodoCreate, *, user_id: int) -> Todo:
     # instandiate todo model
     todo = Todo(
         user_id=user_id,
+        list_id=todo_data.list_id,
         title=todo_data.title,
         description=todo_data.description,
         due_date=todo_data.due_date,
@@ -50,14 +56,17 @@ def get_todos(
     db: Session,
     *,
     user_id: int,
+    list_id: int | None = None,
     sort_by: str = "date_added",
     sort_order: str = "asc",
     tag: str | None = None,
     priority: str | None = None,
 ) -> list[Todo]:
     _purge_expired_deleted_todos(db)
+    # Without a list_id the caller sees their personal list.
     query = select(Todo).where(
         _accessible_by(user_id),
+        Todo.list_id == list_id if list_id is not None else Todo.list_id.is_(None),
         Todo.deleted_at.is_(None),
     )
 

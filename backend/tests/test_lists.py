@@ -136,3 +136,80 @@ def test_list_names_are_validated(nikko, payload):
 def test_every_list_operation_requires_login(anonymous_client, method, path, payload):
     kwargs = {"json": payload} if payload is not None else {}
     assert getattr(anonymous_client, method)(path, **kwargs).status_code == 401
+
+
+@pytest.fixture()
+def shared_list(nikko):
+    task_list = create_list(nikko, "Nikko's Group List")
+    nikko.post(f"/lists/{task_list['id']}/members", json={"email": "victor@example.com"})
+    return task_list
+
+
+def create_task(client, title, list_id=None):
+    response = client.post("/todos", json={"title": title, "list_id": list_id})
+    assert response.status_code == 201
+    return response.json()
+
+
+def titles(client, list_id=None):
+    path = "/todos" if list_id is None else f"/todos?list_id={list_id}"
+    response = client.get(path)
+    assert response.status_code == 200
+    return [todo["title"] for todo in response.json()]
+
+
+def test_members_share_list_tasks_but_keep_personal_tasks_private(nikko, victor, shared_list):
+    create_task(nikko, "Nikko personal")
+    create_task(victor, "Victor personal")
+    create_task(nikko, "Group task by Nikko", shared_list["id"])
+    create_task(victor, "Group task by Victor", shared_list["id"])
+
+    assert titles(nikko) == ["Nikko personal"]
+    assert titles(victor) == ["Victor personal"]
+    expected = ["Group task by Nikko", "Group task by Victor"]
+    assert titles(nikko, shared_list["id"]) == expected
+    assert titles(victor, shared_list["id"]) == expected
+
+
+def test_members_can_update_delete_and_restore_list_tasks(nikko, victor, shared_list):
+    task = create_task(nikko, "Group task", shared_list["id"])
+    path = f"/todos/{task['id']}"
+
+    assert victor.patch(path, json={"completed": True}).json()["completed"] is True
+    assert victor.delete(path).status_code == 204
+    assert nikko.post(f"{path}/restore").status_code == 200
+
+
+def test_outsiders_cannot_use_a_list_or_its_tasks(nikko, outsider, shared_list):
+    task = create_task(nikko, "Group task", shared_list["id"])
+    path = f"/todos/{task['id']}"
+
+    assert outsider.get(f"/todos?list_id={shared_list['id']}").status_code == 404
+    assert outsider.post("/todos", json={"title": "Sneak in", "list_id": shared_list["id"]}).status_code == 404
+    assert outsider.get(path).status_code == 404
+    assert outsider.patch(path, json={"title": "Hijacked"}).status_code == 404
+    assert outsider.delete(path).status_code == 404
+    assert titles(nikko, shared_list["id"]) == ["Group task"]
+
+
+def test_removed_members_lose_access_to_tasks_they_created(nikko, victor, shared_list):
+    task = create_task(victor, "Victor's contribution", shared_list["id"])
+    victor_id = next(member["id"] for member in nikko.get(f"/lists/{shared_list['id']}/members").json()
+                     if member["display_name"] == "Victor")
+
+    assert nikko.delete(f"/lists/{shared_list['id']}/members/{victor_id}").status_code == 204
+
+    # Access follows list membership, not authorship; the task stays with the list.
+    assert victor.get(f"/todos/{task['id']}").status_code == 404
+    assert titles(victor) == []
+    assert titles(nikko, shared_list["id"]) == ["Victor's contribution"]
+
+
+def test_tasks_cannot_be_moved_between_lists_by_update(nikko, victor, shared_list):
+    task = create_task(nikko, "Stay personal")
+
+    response = nikko.patch(f"/todos/{task['id']}", json={"title": "Still personal", "list_id": shared_list["id"]})
+
+    assert response.status_code == 200
+    assert response.json()["list_id"] is None
+    assert victor.get(f"/todos/{task['id']}").status_code == 404

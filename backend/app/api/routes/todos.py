@@ -7,7 +7,7 @@ from app.api.dependencies import get_current_user
 from app.db.database import get_db
 from app.db.models import User
 from app.schemas.todo import TodoCreate, TodoResponse, TodoUpdate
-from app.services import todo_service
+from app.services import list_service, todo_service
 
 
 # The router-level dependency guarantees every route requires a session, even
@@ -20,6 +20,16 @@ router = APIRouter(
 )
 
 
+def require_list_access(db: Session, list_id: int | None, user: User) -> None:
+    # Personal tasks need no list; a collaborative list must be one the user
+    # owns or belongs to, otherwise it is reported as missing.
+    if list_id is not None and list_service.get_list(db, list_id, user_id=user.id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="List not found",
+        )
+
+
 @router.post(
     "",
     response_model=TodoResponse,
@@ -30,6 +40,7 @@ def create_todo(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_list_access(db, todo_data.list_id, user)
     return todo_service.create_todo(db, todo_data, user_id=user.id)
 
 
@@ -44,12 +55,15 @@ def get_todos(
     sort_order: Literal["asc", "desc"] = Query(default="asc"),
     tag: str | None = Query(default=None, min_length=1, max_length=100),
     priority: Literal["low", "medium", "high"] | None = Query(default=None),
+    list_id: int | None = Query(default=None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_list_access(db, list_id, user)
     return todo_service.get_todos(
         db,
         user_id=user.id,
+        list_id=list_id,
         sort_by=sort_by,
         sort_order=sort_order,
         tag=tag,
