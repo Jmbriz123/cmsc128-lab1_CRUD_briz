@@ -56,17 +56,44 @@ def anonymous_client(test_engine):
 
 
 @pytest.fixture()
-def client(anonymous_client, db_session):
-    # Existing CRUD tests exercise real cookie authentication, not a bypass.
+def make_user(db_session):
     from app.db.models import User
+
+    def make(email="crud@example.com", display_name="CRUD Tester"):
+        user = User(email=email, display_name=display_name, password_hash="unused-fixture-hash")
+        db_session.add(user)
+        db_session.commit()
+        return user
+    return make
+
+
+@pytest.fixture()
+def client(anonymous_client, db_session, make_user):
+    # Existing CRUD tests exercise real cookie authentication, not a bypass.
     from app.services.session_service import create_session
     from app.core.config import settings
-    user = User(email="crud@example.com", display_name="CRUD Tester", password_hash="unused-fixture-hash")
-    db_session.add(user)
-    db_session.commit()
-    token = create_session(db_session, user.id)
+    token = create_session(db_session, make_user().id)
     anonymous_client.cookies.set(settings.session_cookie_name, token)
     return anonymous_client
+
+
+@pytest.fixture()
+def client_for(anonymous_client, db_session, make_user):
+    # Each call signs in a separate account with its own cookie jar, so tests
+    # can act as two users against the same database.
+    from app.services.session_service import create_session
+    from app.core.config import settings
+    clients = []
+
+    def build(email, display_name="UBAC Tester"):
+        test_client = TestClient(app, headers=dict(anonymous_client.headers))
+        token = create_session(db_session, make_user(email, display_name).id)
+        test_client.cookies.set(settings.session_cookie_name, token)
+        clients.append(test_client)
+        return test_client
+    yield build
+    for test_client in clients:
+        test_client.close()
 
 
 @pytest.fixture(autouse=True)

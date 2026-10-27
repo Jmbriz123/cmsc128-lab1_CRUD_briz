@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.db.database import get_db
+from app.db.models import User
 from app.schemas.todo import TodoCreate, TodoResponse, TodoUpdate
 from app.services import todo_service
 
@@ -23,9 +24,10 @@ router = APIRouter(
 )
 def create_todo(
     todo_data: TodoCreate,
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return todo_service.create_todo(db, todo_data)
+    return todo_service.create_todo(db, todo_data, user.id)
 
 
 @router.get(

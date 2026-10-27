@@ -21,9 +21,10 @@ def _purge_expired_deleted_todos(db: Session) -> None:
     db.commit()
 
 
-def create_todo(db: Session, todo_data: TodoCreate) -> Todo:
+def create_todo(db: Session, todo_data: TodoCreate, owner_id: int) -> Todo:
     # instandiate todo model
     todo = Todo(
+        user_id=owner_id,
         title=todo_data.title,
         description=todo_data.description,
         due_date=todo_data.due_date,
