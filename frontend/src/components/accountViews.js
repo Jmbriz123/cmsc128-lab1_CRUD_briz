@@ -22,9 +22,9 @@ const form = (id, body, button) => `<form id="${id}" class="account-form" novali
 
 export function accountShell(content, user = null) {
   return `<div class="shell"><header class="topbar">
-    <a class="brand" href="#/${user ? "profile" : "login"}"><span class="brand-mark">D</span>Daymark</a>
+    <a class="brand" href="#/${user ? "tasks" : "login"}"><span class="brand-mark">D</span>Daymark</a>
     <nav class="nav" aria-label="Primary navigation">${user
-      ? '<a href="#/profile">Profile</a><a href="#/tasks">Shared tasks</a><button class="button button-quiet" type="button" data-logout>Log Out</button>'
+      ? '<a href="#/profile">Profile</a><a href="#/tasks">My tasks</a><button class="button button-quiet" type="button" data-logout>Log Out</button>'
       : '<a href="#/login">Log in</a><a href="#/register">Create account</a>'}</nav>
     ${user ? `<span class="signed-in">${escapeHtml(user.display_name)}</span>` : ""}
   </header><main class="account-workspace">
@@ -51,7 +51,7 @@ export function renderAccountPage(route, user) {
       break;
     case "profile":
       content = `<section class="account-intro"><p class="eyebrow">Your account</p><h1>Hello, <span id="greeting-name">${escapeHtml(user.display_name)}</span></h1>
-        <p>Manage your account, or open the <a href="#/tasks">shared task workspace</a>.</p></section>
+        <p>Manage your account, or open your <a href="#/tasks">to-do list</a>.</p></section>
         <div class="account-grid"><section class="account-panel"><h2>Profile details</h2>
         ${form("profile-form", name(user.display_name) + email(user.email) + password("current_password", "Current password", false, false) + '<p class="form-note">Your current password is required only when changing your email address.</p>', "Save profile")}
         <button class="button button-quiet" type="button" data-discard-profile>Discard profile edits</button></section>

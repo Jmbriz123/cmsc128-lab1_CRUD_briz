@@ -26,7 +26,7 @@ export function createAccountApp() {
       resetToken = token;
       history.replaceState(null, "", "#/reset-password");
     }
-    return routes.has(path) ? path : (user ? "profile" : "login");
+    return routes.has(path) ? path : (user ? "tasks" : "login");
   }
 
   function clearTasks() {
@@ -100,7 +100,7 @@ export function createAccountApp() {
     if (operation !== version || stopped) return;
     if (preserve && route === currentRoute && user && user.id === previousUser?.id) return;
     const destination = !user && protectedRoutes.has(route) ? "login"
-      : user && ["login", "register"].includes(route) ? "profile" : route;
+      : user && ["login", "register"].includes(route) ? "tasks" : route;
     render(destination);
   }
 
@@ -169,7 +169,7 @@ export function createAccountApp() {
           const authenticated = await auth.login(payload);
           if (operation !== version) return;
           user = authenticated;
-          await navigate("profile", "", true);
+          await navigate("tasks", "", true);
           break;
         }
         case "profile-form": {

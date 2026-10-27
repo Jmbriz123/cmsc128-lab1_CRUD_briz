@@ -172,7 +172,6 @@ input.invalid { border-color: var(--coral); }
 .account-message { padding: 12px 16px; margin-bottom: 20px; border-radius: 8px; background: var(--paper-deep); }
 .account-message:empty { display: none; }
 .signed-in { margin-left: auto; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
-.shared-notice { padding: 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; }
 input[aria-invalid="true"] { border-color: var(--coral); }
 @media (max-width: 700px) {
   .account-grid { grid-template-columns: 1fr; }

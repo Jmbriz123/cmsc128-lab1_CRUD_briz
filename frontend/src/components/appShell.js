@@ -19,7 +19,6 @@ export function mountApp() {
 
       <main id="tasks" class="workspace">
         <div id="account-feedback" role="status" aria-live="polite"></div>
-        <p class="shared-notice">Shared workspace: all signed-in users can access these tasks. Personal task ownership comes in the next activity.</p>
         <section class="intro">
           <div>
             <p class="eyebrow">Academic task manager</p>

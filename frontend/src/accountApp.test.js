@@ -46,13 +46,14 @@ it("redirects unauthenticated task navigation to login", async () => {
   expect(screen.getByRole("heading", { name: "Log in to Daymark" })).toBeTruthy();
 });
 
-it("logs in and opens the profile", async () => {
+it("logs in and opens the to-do list", async () => {
   auth.login.mockResolvedValue(user);
   await start();
   input("Email address", user.email);
   input("Password", password);
   fireEvent.submit(document.querySelector("#login-form"));
-  await screen.findByRole("heading", { name: "Hello, Student" });
+  await screen.findByRole("heading", { name: "Make room for the work that matters." });
+  expect(location.hash).toBe("#/tasks");
   expect(auth.login).toHaveBeenCalledWith({ email: user.email, password });
 });
 
@@ -75,7 +76,7 @@ it("preserves dirty profile changes when navigation is cancelled", async () => {
   await start("profile", true);
   input("Display name", "Unsaved");
   window.confirm.mockReturnValue(false);
-  fireEvent.click(screen.getByRole("link", { name: "Shared tasks" }));
+  fireEvent.click(screen.getByRole("link", { name: "My tasks" }));
   expect(window.confirm).toHaveBeenCalledOnce();
   expect(location.hash).toBe("#/profile");
   expect(screen.getByLabelText("Display name").value).toBe("Unsaved");
@@ -115,7 +116,7 @@ it("distinguishes a network outage from logout and offers retry", async () => {
   expect(screen.getByRole("heading", { name: "Cannot reach your account" })).toBeTruthy();
   auth.currentUser.mockResolvedValue(user);
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-  await screen.findByRole("heading", { name: "Hello, Student" });
+  await screen.findByRole("heading", { name: "Make room for the work that matters." });
 });
 
 it("removes reset tokens from the address bar and submits them only in the body", async () => {
