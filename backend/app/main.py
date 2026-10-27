@@ -5,6 +5,7 @@ from app.api.routes.recovery import router as recovery_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.users import router as users_router
 from app.api.routes.todos import router as todos_router
+from app.api.routes.lists import router as lists_router
 
 app = FastAPI(
     title="Academic Task Manager API",
@@ -19,6 +20,7 @@ app.include_router(auth_router)
 app.include_router(recovery_router)
 app.include_router(users_router)
 app.include_router(todos_router)
+app.include_router(lists_router)
 
 @app.get("/health")
 def health_check():
