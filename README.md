@@ -234,7 +234,7 @@ LEFT JOIN users m ON m.id = lm.user_id ORDER BY l.id;
 
 The password representation begins with an Argon2 identifier; it is not reversible plaintext. Do not display raw session/reset tokens during defense. Re-run the account query after a browser refresh and backend restart to demonstrate persistence.
 
-Use [the defense checklist](docs/DEFENSE_CHECKLIST.md) to rehearse the required live flows and source-code explanations. The final submission checkpoint uses the lab-prescribed commit message `cmsc128-Indiv-Act3-finalX`; normal development commits use Conventional Commits. Submit the public repository URL and the `act3-ubac` branch. The live defense and its deadline remain the student's responsibility.
+The final submission checkpoint uses the lab-prescribed commit message `cmsc128-Indiv-Act3-finalX`; normal development commits use Conventional Commits. Submit the public repository URL and the `act3-ubac` branch. The live defense and its deadline remain the student's responsibility.
 
 ## Project map
 

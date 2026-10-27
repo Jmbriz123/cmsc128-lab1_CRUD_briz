@@ -25,7 +25,8 @@ out/
 *.log
 
 #docs, not ready to be public
-docs/PROJECT_PLAN.md 
+docs/PROJECT_PLAN.md
+docs/DEFENSE_CHECKLIST.md
 
 #frontend
 frontend/dist
