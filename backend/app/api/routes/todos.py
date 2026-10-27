@@ -10,6 +10,9 @@ from app.schemas.todo import TodoCreate, TodoResponse, TodoUpdate
 from app.services import todo_service
 
 
+# The router-level dependency guarantees every route requires a session, even
+# one that forgets to ask for the user. Each route still requests `user` so its
+# queries can be scoped; FastAPI resolves the dependency once per request.
 router = APIRouter(
     prefix="/todos",
     tags=["todos"],
@@ -27,7 +30,7 @@ def create_todo(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return todo_service.create_todo(db, todo_data, user.id)
+    return todo_service.create_todo(db, todo_data, user_id=user.id)
 
 
 @router.get(
@@ -41,10 +44,12 @@ def get_todos(
     sort_order: Literal["asc", "desc"] = Query(default="asc"),
     tag: str | None = Query(default=None, min_length=1, max_length=100),
     priority: Literal["low", "medium", "high"] | None = Query(default=None),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return todo_service.get_todos(
         db,
+        user_id=user.id,
         sort_by=sort_by,
         sort_order=sort_order,
         tag=tag,
@@ -58,9 +63,10 @@ def get_todos(
 )
 def get_todo(
     todo_id: int,
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    todo = todo_service.get_todo(db, todo_id)
+    todo = todo_service.get_todo(db, todo_id, user_id=user.id)
 
     if todo is None:
         raise HTTPException(
@@ -78,9 +84,10 @@ def get_todo(
 def update_todo(
     todo_id: int,
     todo_data: TodoUpdate,
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    todo = todo_service.get_todo(db, todo_id)
+    todo = todo_service.get_todo(db, todo_id, user_id=user.id)
 
     if todo is None:
         raise HTTPException(
@@ -102,9 +109,10 @@ def update_todo(
 def delete_todo(
     todo_id: int,
     response: Response,
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    todo = todo_service.get_todo(db, todo_id)
+    todo = todo_service.get_todo(db, todo_id, user_id=user.id)
 
     if todo is None:
         raise HTTPException(
@@ -122,9 +130,10 @@ def delete_todo(
 )
 def restore_todo(
     todo_id: int,
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    todo = todo_service.restore_todo(db, todo_id)
+    todo = todo_service.restore_todo(db, todo_id, user_id=user.id)
 
     if todo is None:
         raise HTTPException(

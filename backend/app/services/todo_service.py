@@ -21,10 +21,17 @@ def _purge_expired_deleted_todos(db: Session) -> None:
     db.commit()
 
 
-def create_todo(db: Session, todo_data: TodoCreate, owner_id: int) -> Todo:
+def _accessible_by(user_id: int):
+    # Single source of truth for which tasks a user may see or change. Every
+    # task query goes through this filter, so a guessed ID that belongs to
+    # another account matches nothing and the route answers 404.
+    return Todo.user_id == user_id
+
+
+def create_todo(db: Session, todo_data: TodoCreate, *, user_id: int) -> Todo:
     # instandiate todo model
     todo = Todo(
-        user_id=owner_id,
+        user_id=user_id,
         title=todo_data.title,
         description=todo_data.description,
         due_date=todo_data.due_date,
@@ -41,13 +48,18 @@ def create_todo(db: Session, todo_data: TodoCreate, owner_id: int) -> Todo:
 
 def get_todos(
     db: Session,
+    *,
+    user_id: int,
     sort_by: str = "date_added",
     sort_order: str = "asc",
     tag: str | None = None,
     priority: str | None = None,
 ) -> list[Todo]:
     _purge_expired_deleted_todos(db)
-    query = select(Todo).where(Todo.deleted_at.is_(None))
+    query = select(Todo).where(
+        _accessible_by(user_id),
+        Todo.deleted_at.is_(None),
+    )
 
     if tag is not None:
         query = query.where(Todo.tag == tag)
@@ -75,11 +87,12 @@ def get_todos(
     return list(db.scalars(query))
 
 
-def get_todo(db: Session, todo_id: int) -> Todo | None:
+def get_todo(db: Session, todo_id: int, *, user_id: int) -> Todo | None:
     _purge_expired_deleted_todos(db)
     return db.scalar(
         select(Todo).where(
             Todo.id == todo_id,
+            _accessible_by(user_id),
             Todo.deleted_at.is_(None),
         )
     )
@@ -107,11 +120,12 @@ def delete_todo(db: Session, todo: Todo) -> None:
     db.commit()
 
 
-def restore_todo(db: Session, todo_id: int) -> Todo | None:
+def restore_todo(db: Session, todo_id: int, *, user_id: int) -> Todo | None:
     _purge_expired_deleted_todos(db)
     todo = db.scalar(
         select(Todo).where(
             Todo.id == todo_id,
+            _accessible_by(user_id),
             Todo.deleted_at.is_not(None),
         )
     )

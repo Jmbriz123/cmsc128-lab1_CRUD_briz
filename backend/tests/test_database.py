@@ -45,7 +45,8 @@ def test_todo_update_is_persisted(db_session, make_user):
 
 
 def test_soft_delete_and_restore_are_persisted(db_session, make_user):
-    todo = Todo(title="Restorable task", user_id=make_user().id)
+    owner = make_user()
+    todo = Todo(title="Restorable task", user_id=owner.id)
     db_session.add(todo)
     db_session.commit()
     todo_id = todo.id
@@ -55,7 +56,7 @@ def test_soft_delete_and_restore_are_persisted(db_session, make_user):
     deleted = db_session.get(Todo, todo_id)
     assert deleted.deleted_at is not None
 
-    restored = todo_service.restore_todo(db_session, todo_id)
+    restored = todo_service.restore_todo(db_session, todo_id, user_id=owner.id)
 
     assert restored is not None
     assert restored.deleted_at is None
