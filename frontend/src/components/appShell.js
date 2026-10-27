@@ -9,7 +9,7 @@ export function mountApp() {
           <span>Daymark</span>
         </a>
         <nav class="nav" aria-label="Primary navigation">
-          <a class="nav-link active" href="#/tasks">All tasks</a>
+          <a class="nav-link active" href="#/tasks">My tasks</a>
           <span class="task-count" id="task-count">0 tasks</span>
           <a href="#/profile">Profile</a>
           <button class="button button-quiet" type="button" data-logout>Log Out</button>
@@ -26,6 +26,40 @@ export function mountApp() {
             <p class="lede">Capture the next thing, give it a place, and keep your week moving.</p>
           </div>
           <button class="button button-primary" id="new-task-button" type="button">+ New task</button>
+        </section>
+
+        <section class="list-bar" aria-label="To-do lists">
+          <div>
+            <label for="list-select">Current list</label>
+            <select id="list-select"><option value="">Personal</option></select>
+          </div>
+          <form id="new-list-form" novalidate>
+            <label for="new-list-name">New collaborative list</label>
+            <div class="inline-controls">
+              <input id="new-list-name" maxlength="100" placeholder="e.g. Thesis group" />
+              <button class="button button-secondary" type="submit">Create list</button>
+            </div>
+          </form>
+          <p class="list-message" id="list-message" role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="members-panel hidden" id="members-panel" aria-labelledby="members-title">
+          <div>
+            <p class="eyebrow" id="members-owner"></p>
+            <h2 id="members-title">Members</h2>
+          </div>
+          <ul class="member-list" id="member-list"></ul>
+          <form id="add-member-form" class="hidden" novalidate>
+            <label for="member-email">Add a member by email</label>
+            <div class="inline-controls">
+              <input id="member-email" type="email" maxlength="254" placeholder="classmate@example.com" />
+              <button class="button button-secondary" type="submit">Add member</button>
+            </div>
+          </form>
+          <div class="member-actions">
+            <button class="button button-danger hidden" id="delete-list" type="button">Delete list</button>
+            <button class="button button-quiet hidden" id="leave-list" type="button">Leave list</button>
+          </div>
         </section>
 
         <section class="content-grid">
@@ -75,7 +109,7 @@ export function mountApp() {
             <div class="list-heading">
               <div>
                 <p class="eyebrow">Your workspace</p>
-                <h2 id="list-title">All tasks</h2>
+                <h2 id="list-title">Personal tasks</h2>
               </div>
               <span class="result-label" id="result-label">Loading...</span>
             </div>
@@ -161,5 +195,18 @@ export function mountApp() {
     cancelDelete: document.querySelector("#cancel-delete"),
     confirmDelete: document.querySelector("#confirm-delete"),
     toastRegion: document.querySelector("#toast-region"),
+    listSelect: document.querySelector("#list-select"),
+    listTitle: document.querySelector("#list-title"),
+    newListForm: document.querySelector("#new-list-form"),
+    newListName: document.querySelector("#new-list-name"),
+    listMessage: document.querySelector("#list-message"),
+    membersPanel: document.querySelector("#members-panel"),
+    membersOwner: document.querySelector("#members-owner"),
+    membersTitle: document.querySelector("#members-title"),
+    memberList: document.querySelector("#member-list"),
+    addMemberForm: document.querySelector("#add-member-form"),
+    memberEmail: document.querySelector("#member-email"),
+    deleteList: document.querySelector("#delete-list"),
+    leaveList: document.querySelector("#leave-list"),
   };
 }

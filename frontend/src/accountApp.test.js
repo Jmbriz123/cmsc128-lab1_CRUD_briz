@@ -9,6 +9,10 @@ vi.mock("./api/auth.js", () => ({
   currentUser: vi.fn(), register: vi.fn(), login: vi.fn(), logout: vi.fn(),
   updateProfile: vi.fn(), changePassword: vi.fn(), forgotPassword: vi.fn(), resetPassword: vi.fn(),
 }));
+vi.mock("./api/lists.js", () => ({
+  listLists: vi.fn().mockResolvedValue([]), createList: vi.fn(), deleteList: vi.fn(),
+  listMembers: vi.fn(), addMember: vi.fn(), removeMember: vi.fn(),
+}));
 vi.mock("./api/todos.js", () => ({ listTodos: vi.fn().mockResolvedValue([]), createTodo: vi.fn(), updateTodo: vi.fn(), deleteTodo: vi.fn(), restoreTodo: vi.fn() }));
 const user = { id: 1, email: "student@example.com", display_name: "Student" };
 const password = "a sufficiently long password";

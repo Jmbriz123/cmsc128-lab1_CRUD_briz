@@ -1,6 +1,7 @@
 import * as auth from "./api/auth.js";
 import { accountShell, renderAccountPage } from "./components/accountViews.js";
 import { mountApp } from "./components/appShell.js";
+import { bindListHandlers } from "./handlers/listHandlers.js";
 import { bindTaskHandlers } from "./handlers/taskHandlers.js";
 import { clearFeedbackTimers } from "./components/feedback.js";
 import state from "./state.js";
@@ -56,7 +57,9 @@ export function createAccountApp() {
     history.replaceState(null, "", `#/${route}`);
     if (route === "tasks") {
       const elements = mountApp();
-      stopTasks = bindTaskHandlers(elements);
+      const stopTaskHandlers = bindTaskHandlers(elements);
+      const stopListHandlers = bindListHandlers(elements, user);
+      stopTasks = () => { stopTaskHandlers(); stopListHandlers(); };
     } else {
       renderAccountPage(route, user);
       if (route === "reset-password" && !resetToken) {
